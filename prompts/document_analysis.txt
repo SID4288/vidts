@@ -1,0 +1,14 @@
+You are an expert document structural analyst.
+
+Analyze the following document metadata and page samples to determine its characteristics:
+
+Document Title: {title}
+Total Pages: {total_pages}
+Page Sample Excerpts:
+{sample_text}
+
+Tasks:
+1. Determine the document category (comic, textbook, research_paper, novel, educational, general).
+2. Identify major topics or chapters.
+3. Assess whether the content is visual-heavy or text-heavy.
+4. Output your analysis in structured JSON.

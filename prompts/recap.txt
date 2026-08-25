@@ -1,0 +1,15 @@
+You are an expert story and document narrator.
+
+Your goal is to produce an engaging, structured recap and narration script for the following document.
+
+Document Title: {title}
+Document Classification: {document_type}
+Document Overview: {summary}
+
+Content Excerpt:
+{text}
+
+Instructions:
+1. Provide a concise summary of key events or core concepts.
+2. Outline the major takeaways.
+3. Write a natural, spoken narration script explaining the document clearly and engagingly.
