@@ -1,5 +1,3 @@
-"""Data models for document analysis."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -7,9 +7,7 @@ from app.ingest.models import Document, DocumentSection, DocumentType
 
 LOGGER = logging.getLogger(__name__)
 
-
 class DocumentAnalyzer:
-    """Analyzes a Document to determine characteristics, sections, and content profile."""
 
     def analyze(self, document: Document) -> DocumentAnalysis:
         """Performs initial heuristic analysis (placeholder for future deep/LLM analysis)."""
