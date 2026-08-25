@@ -12,9 +12,9 @@ import yaml
 @dataclass(slots=True)
 class LLMSettings:
     provider: str = "ollama"
-    model: str = "gemma3"
+    model: str = "llama3.2"
     base_url: str = "http://localhost:11434"
-    timeout_seconds: int = 120
+    timeout_seconds: int = 300
 
 
 @dataclass(slots=True)
@@ -28,6 +28,14 @@ class SegmentationSettings:
     max_duration_minutes: int = 10
     max_script_words: int = 1800
     max_pages_per_video: int | None = None
+
+
+@dataclass(slots=True)
+class NarrationSettings:
+    engine: str = "edge-tts"
+    voice: str = "en-US-ChristopherNeural"
+    rate: str = "+0%"
+    volume: str = "+0%"
 
 
 @dataclass(slots=True)
@@ -46,6 +54,7 @@ class AppConfig:
     llm: LLMSettings = field(default_factory=LLMSettings)
     document: DocumentSettings = field(default_factory=DocumentSettings)
     segmentation: SegmentationSettings = field(default_factory=SegmentationSettings)
+    narration: NarrationSettings = field(default_factory=NarrationSettings)
     output: OutputSettings = field(default_factory=OutputSettings)
     video: VideoSettings = field(default_factory=VideoSettings)
 
@@ -54,12 +63,14 @@ class AppConfig:
         llm = LLMSettings(**raw.get("llm", {}))
         document = DocumentSettings(**raw.get("document", {}))
         segmentation = SegmentationSettings(**raw.get("segmentation", {}))
+        narration = NarrationSettings(**raw.get("narration", {}))
         output = OutputSettings(**raw.get("output", {}))
         video = VideoSettings(**raw.get("video", {}))
         return cls(
             llm=llm,
             document=document,
             segmentation=segmentation,
+            narration=narration,
             output=output,
             video=video,
         )

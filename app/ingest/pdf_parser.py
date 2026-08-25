@@ -30,7 +30,11 @@ class PDFParser:
             raise PDFParseError(f"Failed to open PDF: {path}") from exc
 
         try:
-            pages = self.page_extractor.extract_pages(reader, max_pages=self.max_pages)
+            pages = self.page_extractor.extract_pages(
+                reader,
+                max_pages=self.max_pages,
+                source_path=path,
+            )
             raw_title = getattr(reader.metadata, "title", None) if reader.metadata else None
             title = raw_title or path.stem
             metadata = {

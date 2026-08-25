@@ -40,7 +40,11 @@ class RecapGenerator:
             text=truncated_text,
         )
 
-        LOGGER.debug("Generating recap using LLM prompt (length: %s chars)", len(prompt))
+        LOGGER.info(
+            "Generating recap with %s (prompt length: %d chars; may take 30-90s on CPU)...",
+            getattr(self.llm_provider, "model", "LLM"),
+            len(prompt),
+        )
         raw_output = self.llm_provider.generate(prompt=prompt)
         if not raw_output.strip():
             raw_output = (

@@ -1,0 +1,29 @@
+# vidts configuration file
+
+llm:
+  provider: ollama
+  model: llama3.2
+  base_url: "http://localhost:11434"
+  timeout_seconds: 300
+
+document:
+  max_pages: null  # null to parse all pages, or an integer limit (e.g. 50)
+
+segmentation:
+  enabled: true
+  max_duration_minutes: 10
+  max_script_words: 1800
+  max_pages_per_video: null
+
+narration:
+  engine: "edge-tts"
+  voice: "en-US-ChristopherNeural"  # High quality natural male voice (or en-US-AriaNeural, en-US-GuyNeural)
+  rate: "+0%"
+  volume: "+0%"
+
+output:
+  directory: "output"
+
+video:
+  resolution: "1920x1080"
+  fps: 30
