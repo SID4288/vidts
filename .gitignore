@@ -32,3 +32,4 @@ venv/
 # vidts generated output
 output/*
 !output/.gitkeep
+docs/
