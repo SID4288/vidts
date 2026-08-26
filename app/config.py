@@ -33,7 +33,7 @@ class SegmentationSettings:
 @dataclass(slots=True)
 class NarrationSettings:
     engine: str = "edge-tts"
-    voice: str = "en-US-ChristopherNeural"
+    voice: str = "en-US-BrianNeural"
     rate: str = "+0%"
     volume: str = "+0%"
 

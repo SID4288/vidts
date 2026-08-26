@@ -1,4 +1,4 @@
-"""High-quality Text-to-Speech narration provider using edge-tts."""
+"""High-quality Text-to-Speech narration provider using edge-tts with per-scene synchronization."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import edge_tts
 import imageio_ffmpeg
 
 from app.config import NarrationSettings
-from app.narration.models import AudioTrack, NarrationResult
+from app.narration.models import AudioTrack, NarrationResult, SceneAudio
 from app.narration.narrator import Narrator
 from app.segmentation.models import DocumentSegment
 
@@ -54,8 +54,47 @@ async def _synthesize_async(
     await communicate.save(str(output_file))
 
 
+def _combine_audio_clips(ffmpeg_exe: str, audio_files: list[Path], output_combined: Path) -> None:
+    """Combines multiple MP3 audio files into a single master MP3 using FFmpeg concat."""
+    if not audio_files:
+        return
+    if len(audio_files) == 1:
+        # Copy single file directly
+        output_combined.write_bytes(audio_files[0].read_bytes())
+        return
+
+    concat_file = output_combined.parent / f"concat_{output_combined.stem}.txt"
+    lines = [f"file '{p.resolve().as_posix()}'" for p in audio_files]
+    concat_file.write_text("\n".join(lines), encoding="utf-8")
+
+    cmd = [
+        ffmpeg_exe,
+        "-y",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        str(concat_file),
+        "-c:a",
+        "libmp3lame",
+        "-q:a",
+        "2",
+        str(output_combined),
+    ]
+    subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="ignore",
+        check=False,
+    )
+
+
 class EdgeTTSNarrator(Narrator):
-    """Generates natural neural audio narration using Microsoft Edge TTS."""
+    """Generates natural neural audio narration with scene-level precision."""
 
     def __init__(
         self,
@@ -67,59 +106,94 @@ class EdgeTTSNarrator(Narrator):
 
     def narrate(self, segments: list[DocumentSegment]) -> NarrationResult:
         LOGGER.info(
-            "Generating real neural narration for %d segment(s) using voice '%s'",
-            len(segments),
+            "Synthesizing scene-by-scene narration using natural voice '%s'",
             self.settings.voice,
         )
         self.output_directory.mkdir(parents=True, exist_ok=True)
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
         tracks: list[AudioTrack] = []
         total_duration = 0.0
 
         for segment in segments:
             track_id = f"track_{segment.part_number}_{uuid.uuid4().hex[:8]}"
-            audio_path = self.output_directory / f"part_{segment.part_number}_audio.mp3"
+            master_audio_path = self.output_directory / f"part_{segment.part_number}_audio.mp3"
 
-            text_to_speak = segment.script.strip()
-            if not text_to_speak:
-                text_to_speak = f"Part {segment.part_number} narration summary."
+            scene_audios: list[SceneAudio] = []
+            synthesized_files: list[Path] = []
+            segment_duration = 0.0
 
-            try:
-                # Run async TTS generator in sync flow
-                asyncio.run(
-                    _synthesize_async(
-                        text=text_to_speak,
-                        output_file=audio_path,
-                        voice=self.settings.voice,
-                        rate=self.settings.rate,
-                        volume=self.settings.volume,
+            if segment.scenes:
+                LOGGER.info("Synthesizing %d individual scene audio clips for Part %d", len(segment.scenes), segment.part_number)
+                for scene in segment.scenes:
+                    scene_file = self.output_directory / f"part_{segment.part_number}_scene_{scene.scene_index}.mp3"
+                    text_to_speak = scene.narration_text.strip()
+                    if not text_to_speak:
+                        text_to_speak = f"Page {scene.page_number}."
+
+                    try:
+                        asyncio.run(
+                            _synthesize_async(
+                                text=text_to_speak,
+                                output_file=scene_file,
+                                voice=self.settings.voice,
+                                rate=self.settings.rate,
+                                volume=self.settings.volume,
+                            )
+                        )
+                        dur = get_audio_duration(scene_file)
+                        if dur <= 0.0:
+                            dur = (len(text_to_speak.split()) / 150.0) * 60.0
+                    except Exception as exc:
+                        LOGGER.error("TTS failed for scene %d (page %d): %s", scene.scene_index, scene.page_number, exc)
+                        dur = (len(text_to_speak.split()) / 150.0) * 60.0
+                        scene_file = None
+
+                    if scene_file and scene_file.exists():
+                        synthesized_files.append(scene_file)
+
+                    scene_audios.append(
+                        SceneAudio(
+                            scene_index=scene.scene_index,
+                            page_number=scene.page_number,
+                            audio_path=scene_file,
+                            duration_seconds=dur,
+                        )
                     )
-                )
-                duration = get_audio_duration(audio_path)
-                if duration <= 0.0:
-                    # Fallback duration calculation (~150 words per minute)
-                    duration = (len(text_to_speak.split()) / 150.0) * 60.0
-                LOGGER.info(
-                    "Generated narration audio for Part %d: %s (duration: %.1fs)",
-                    segment.part_number,
-                    audio_path,
-                    duration,
-                )
-            except Exception as exc:
-                LOGGER.error("Failed to generate edge-tts audio for Part %d: %s", segment.part_number, exc)
-                audio_path = None
-                duration = segment.estimated_duration_seconds or 10.0
+                    segment_duration += dur
 
-            total_duration += duration
+                # Combine all scenes into master segment audio
+                if synthesized_files:
+                    _combine_audio_clips(ffmpeg_exe, synthesized_files, master_audio_path)
+            else:
+                # Fallback for monolithic segment without scenes
+                text_to_speak = segment.script.strip() or f"Part {segment.part_number} narration."
+                try:
+                    asyncio.run(
+                        _synthesize_async(
+                            text=text_to_speak,
+                            output_file=master_audio_path,
+                            voice=self.settings.voice,
+                            rate=self.settings.rate,
+                            volume=self.settings.volume,
+                        )
+                    )
+                    segment_duration = get_audio_duration(master_audio_path)
+                except Exception as exc:
+                    LOGGER.error("TTS failed for monolithic segment %d: %s", segment.part_number, exc)
+                    segment_duration = (len(text_to_speak.split()) / 150.0) * 60.0
+
+            total_duration += segment_duration
             tracks.append(
                 AudioTrack(
                     track_id=track_id,
                     segment_part_number=segment.part_number,
-                    audio_path=audio_path,
-                    duration_seconds=duration,
+                    audio_path=master_audio_path if master_audio_path.exists() else None,
+                    duration_seconds=segment_duration,
                     audio_format="mp3",
+                    scenes=scene_audios,
                     metadata={
                         "voice": self.settings.voice,
-                        "words": len(text_to_speak.split()),
+                        "scenes_synthesized": len(scene_audios),
                     },
                 )
             )

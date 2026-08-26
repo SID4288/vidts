@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.narration.edge_tts_narrator import EdgeTTSNarrator
-from app.narration.models import AudioTrack, NarrationResult
+from app.narration.models import AudioTrack, NarrationResult, SceneAudio
 from app.narration.narrator import Narrator, PlaceholderNarrator
 
 __all__ = [
@@ -12,4 +12,5 @@ __all__ = [
     "NarrationResult",
     "Narrator",
     "PlaceholderNarrator",
+    "SceneAudio",
 ]

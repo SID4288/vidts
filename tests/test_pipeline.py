@@ -115,7 +115,42 @@ def test_ffmpeg_renderer_mock(tmp_path: Path) -> None:
         total_duration_seconds=5.0,
     )
 
-    with patch.object(renderer, "_render_part_ffmpeg") as mock_render:
+    with patch.object(renderer, "_render_fallback_ffmpeg") as mock_render:
+        rendered = renderer.render(segments, narration)
+        assert len(rendered.parts) == 1
+        assert rendered.status == "rendered"
+        mock_render.assert_called_once()
+
+
+def test_ffmpeg_renderer_scenes_sync(tmp_path: Path) -> None:
+    from app.narration.models import SceneAudio
+    renderer = FFmpegVideoRenderer(output_directory=tmp_path, pages_directory=tmp_path / "pages")
+    segments = [
+        DocumentSegment(
+            part_number=1,
+            title="Part 1",
+            script="Test",
+            source_pages=[1, 2],
+            estimated_duration_seconds=10.0,
+        )
+    ]
+    narration = NarrationResult(
+        tracks=[
+            AudioTrack(
+                track_id="t1",
+                segment_part_number=1,
+                audio_path=tmp_path / "part_1_audio.mp3",
+                duration_seconds=10.0,
+                scenes=[
+                    SceneAudio(scene_index=1, page_number=1, duration_seconds=5.0),
+                    SceneAudio(scene_index=2, page_number=2, duration_seconds=5.0),
+                ],
+            )
+        ],
+        total_duration_seconds=10.0,
+    )
+
+    with patch.object(renderer, "_render_scenes_ffmpeg") as mock_render:
         rendered = renderer.render(segments, narration)
         assert len(rendered.parts) == 1
         assert rendered.status == "rendered"

@@ -17,7 +17,7 @@ segmentation:
 
 narration:
   engine: "edge-tts"
-  voice: "en-US-ChristopherNeural"  # High quality natural male voice (or en-US-AriaNeural, en-US-GuyNeural)
+  voice: "en-US-BrianNeural"  # Highly natural, expressive storyteller voice
   rate: "+0%"
   volume: "+0%"
 

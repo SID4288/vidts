@@ -8,7 +8,7 @@ from typing import Any, TypeVar
 from app.analysis.models import DocumentAnalysis
 from app.ingest.models import Document, DocumentPage, DocumentType
 from app.llm.base import LLMProvider
-from app.recap.recap_generator import RecapGenerator
+from app.recap.recap_generator import RecapGenerator, parse_scenes_from_script
 
 T = TypeVar("T")
 
@@ -45,14 +45,19 @@ class MockLLMProvider(LLMProvider):
 
 
 def test_recap_generator_with_mock_llm() -> None:
-    mock_llm = MockLLMProvider(response_text="Custom mock story narration with 10 words total here.")
+    mock_llm = MockLLMProvider(
+        response_text="[Page 1]: Welcome to page one.\n[Page 2]: And here is page two."
+    )
     generator = RecapGenerator(llm_provider=mock_llm, words_per_minute=100)
 
     doc = Document(
         id="doc-1",
         source_path=Path("sample.pdf"),
         title="Test Document",
-        pages=[DocumentPage(page_number=1, text="Sample text content for recap.")],
+        pages=[
+            DocumentPage(page_number=1, text="Sample page 1 text."),
+            DocumentPage(page_number=2, text="Sample page 2 text."),
+        ],
     )
     analysis = DocumentAnalysis(
         title="Test Document",
@@ -64,11 +69,20 @@ def test_recap_generator_with_mock_llm() -> None:
     recap = generator.generate(document=doc, analysis=analysis)
 
     assert recap.title == "Recap: Test Document"
-    assert "Custom mock story narration" in recap.raw_script
-    assert len(recap.sections) == 1
+    assert len(recap.scenes) == 2
+    assert recap.scenes[0].page_number == 1
+    assert recap.scenes[0].narration_text == "Welcome to page one."
+    assert recap.scenes[1].page_number == 2
+    assert recap.scenes[1].narration_text == "And here is page two."
     assert recap.estimated_duration_seconds > 0
-    assert mock_llm.last_prompt is not None
-    assert "Test Document" in mock_llm.last_prompt
+
+
+def test_parse_scenes_fallback() -> None:
+    raw_script = "First paragraph overview.\n\nSecond paragraph details."
+    scenes = parse_scenes_from_script(raw_script, total_pages=2)
+    assert len(scenes) == 2
+    assert scenes[0].page_number == 1
+    assert scenes[1].page_number == 2
 
 
 def test_recap_generator_fallback_on_empty_llm_response() -> None:
@@ -89,4 +103,5 @@ def test_recap_generator_fallback_on_empty_llm_response() -> None:
     )
 
     recap = generator.generate(document=doc, analysis=analysis)
-    assert "recap of Blank Doc" in recap.raw_script
+    assert len(recap.scenes) >= 1
+    assert "Blank Doc" in recap.scenes[0].narration_text

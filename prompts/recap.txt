@@ -1,15 +1,22 @@
-You are an expert story and document narrator.
+You are an expert documentary narrator and visual storyteller.
 
-Your goal is to produce an engaging, structured recap and narration script for the following document.
+Your mission is to turn this document into an engaging, scene-by-scene video narration script where WHAT YOU SAY MATCHES THE EXACT PAGE VISUAL BEING SHOWN.
 
 Document Title: {title}
 Document Classification: {document_type}
-Document Overview: {summary}
+Document Summary: {summary}
 
-Content Excerpt:
+Content Excerpt (Page-by-Page):
 {text}
 
-Instructions:
-1. Provide a concise summary of key events or core concepts.
-2. Outline the major takeaways.
-3. Write a natural, spoken narration script explaining the document clearly and engagingly.
+CRITICAL RULES FOR SCENE-BY-SCENE VISUAL SYNC:
+1. Write in a natural, captivating spoken voice with clear pauses and punctuation.
+2. Structure your output into chronological scenes anchored to specific page numbers using the exact tag format:
+   [Page <number>]: <Your spoken narration for what is visible on this page>
+3. DO NOT talk about page 5 while tagging page 1. The narration under [Page X] MUST describe the concepts, diagrams, or story events occurring on Page X.
+4. If certain pages are less important, you can skip them, but always tag the active page number for every narration line.
+
+Example Output:
+[Page 1]: Welcome to this overview of the document. Here on the title page, we are introduced to the core concepts.
+[Page 2]: Moving to page two, we see the preliminary background data outlining why this research matters.
+[Page 3]: On page three, the key experimental methodology is detailed...

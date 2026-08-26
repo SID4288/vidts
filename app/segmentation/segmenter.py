@@ -6,7 +6,7 @@ import logging
 import math
 
 from app.config import SegmentationSettings
-from app.recap.models import Recap
+from app.recap.models import Recap, RecapScene
 from app.segmentation.models import DocumentSegment
 
 LOGGER = logging.getLogger(__name__)
@@ -47,6 +47,7 @@ class Segmenter:
                     title=f"{recap.title} - Complete",
                     script=recap.raw_script,
                     source_pages=all_pages,
+                    scenes=recap.scenes,
                     estimated_duration_seconds=recap.estimated_duration_seconds,
                     metadata={"split_reason": "none", "part_count": 1},
                 )
@@ -66,6 +67,7 @@ class Segmenter:
         segments: list[DocumentSegment] = []
         words_per_part = math.ceil(total_words / num_parts) if total_words > 0 else 0
         pages_per_part = math.ceil(len(all_pages) / num_parts) if all_pages else 1
+        scenes_per_part = math.ceil(len(recap.scenes) / num_parts) if recap.scenes else 0
 
         for part_idx in range(num_parts):
             start_w = part_idx * words_per_part
@@ -75,6 +77,12 @@ class Segmenter:
             start_p = part_idx * pages_per_part
             end_p = min((part_idx + 1) * pages_per_part, len(all_pages))
             part_pages = all_pages[start_p:end_p] or [1]
+
+            part_scenes: list[RecapScene] = []
+            if recap.scenes and scenes_per_part > 0:
+                start_s = part_idx * scenes_per_part
+                end_s = min((part_idx + 1) * scenes_per_part, len(recap.scenes))
+                part_scenes = recap.scenes[start_s:end_s]
 
             part_duration = (
                 (len(part_script.split()) / max(total_words, 1)) * recap.estimated_duration_seconds
@@ -88,6 +96,7 @@ class Segmenter:
                     title=f"{recap.title} - Part {part_idx + 1}",
                     script=part_script,
                     source_pages=part_pages,
+                    scenes=part_scenes,
                     estimated_duration_seconds=part_duration,
                     metadata={"split_reason": "constraint_exceeded", "part_count": num_parts},
                 )

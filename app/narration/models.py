@@ -8,6 +8,17 @@ from typing import Any
 
 
 @dataclass(slots=True)
+class SceneAudio:
+    """Represents synthesized audio for a specific scene and PDF page."""
+
+    scene_index: int
+    page_number: int
+    audio_path: Path | None = None
+    duration_seconds: float = 0.0
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
 class AudioTrack:
     """Represents a generated narration audio track for a segment."""
 
@@ -16,6 +27,7 @@ class AudioTrack:
     audio_path: Path | None = None
     duration_seconds: float = 0.0
     audio_format: str = "mp3"
+    scenes: list[SceneAudio] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
