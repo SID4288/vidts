@@ -15,8 +15,33 @@ from app.recap.prompts import load_prompt_template
 LOGGER = logging.getLogger(__name__)
 
 
+def _clean_narration_text(text: str) -> str:
+    """Strips meta-narrator phrases that the LLM sometimes inserts despite the prompt."""
+    # Remove leading phrases like "On this page, " or "Here we see "
+    meta_patterns = [
+        r"^(?:On this page,?\s*)",
+        r"^(?:Here (?:we|you) (?:can )?see\s*,?\s*)",
+        r"^(?:This page (?:shows|depicts|illustrates|introduces|presents)\s*,?\s*)",
+        r"^(?:Let(?:'s| us) (?:look at|examine|explore|turn to)\s*,?\s*)",
+        r"^(?:Moving (?:on )?to page \d+,?\s*)",
+        r"^(?:Now,? (?:on|looking at) page \d+,?\s*)",
+        r"^(?:As (?:we|you) can see (?:here|on this page)?,?\s*)",
+    ]
+    cleaned = text.strip()
+    for pattern in meta_patterns:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE).strip()
+    # Capitalize first letter after stripping
+    if cleaned and cleaned[0].islower():
+        cleaned = cleaned[0].upper() + cleaned[1:]
+    return cleaned
+
+
 def parse_scenes_from_script(raw_script: str, total_pages: int = 1) -> list[RecapScene]:
-    """Extracts structured [Page N] scenes from generated narration text."""
+    """Extracts structured [Page N] scenes from generated narration text.
+    
+    Ensures that each scene maps to a valid page and that no page
+    has duplicate scenes (keeps the longest narration if duplicates exist).
+    """
     scenes: list[RecapScene] = []
     
     # Pattern 1: Matches [Page 1]: Narration... or [Page 1] Narration...
@@ -35,25 +60,39 @@ def parse_scenes_from_script(raw_script: str, total_pages: int = 1) -> list[Reca
         matches = pattern2.findall(raw_script)
 
     if matches:
-        for idx, (p_str, text_content) in enumerate(matches, start=1):
-            clean_text = text_content.strip()
-            if clean_text:
-                try:
-                    p_num = int(p_str)
-                except ValueError:
-                    p_num = min(idx, total_pages)
-                
-                # Clamp page number to valid range
-                p_num = max(1, min(p_num, total_pages if total_pages > 0 else 1))
-                scenes.append(
-                    RecapScene(
-                        scene_index=idx,
-                        page_number=p_num,
-                        title=f"Scene {idx} (Page {p_num})",
-                        narration_text=clean_text,
-                        estimated_duration_seconds=(len(clean_text.split()) / 150.0) * 60.0,
-                    )
+        # Build a dict to deduplicate: keep the longest narration per page
+        page_narrations: dict[int, str] = {}
+        for p_str, text_content in matches:
+            clean_text = _clean_narration_text(text_content)
+            if not clean_text:
+                continue
+            try:
+                p_num = int(p_str)
+            except ValueError:
+                continue
+            
+            # Clamp page number to valid range
+            if total_pages > 0:
+                p_num = max(1, min(p_num, total_pages))
+            else:
+                p_num = max(1, p_num)
+            
+            # Keep the longer narration if we already have one for this page
+            if p_num not in page_narrations or len(clean_text) > len(page_narrations[p_num]):
+                page_narrations[p_num] = clean_text
+        
+        # Build scenes sorted by page number for correct visual ordering
+        for idx, p_num in enumerate(sorted(page_narrations.keys()), start=1):
+            narration = page_narrations[p_num]
+            scenes.append(
+                RecapScene(
+                    scene_index=idx,
+                    page_number=p_num,
+                    title=f"Scene {idx} (Page {p_num})",
+                    narration_text=narration,
+                    estimated_duration_seconds=(len(narration.split()) / 150.0) * 60.0,
                 )
+            )
 
     # Fallback if LLM produced unstructured paragraphs: split paragraphs and map to pages
     if not scenes:
@@ -64,13 +103,14 @@ def parse_scenes_from_script(raw_script: str, total_pages: int = 1) -> list[Reca
         num_pages_to_map = max(total_pages, 1)
         for idx, para in enumerate(paragraphs, start=1):
             target_page = ((idx - 1) % num_pages_to_map) + 1
+            clean_para = _clean_narration_text(para)
             scenes.append(
                 RecapScene(
                     scene_index=idx,
                     page_number=target_page,
                     title=f"Scene {idx} (Page {target_page})",
-                    narration_text=para,
-                    estimated_duration_seconds=(len(para.split()) / 150.0) * 60.0,
+                    narration_text=clean_para,
+                    estimated_duration_seconds=(len(clean_para.split()) / 150.0) * 60.0,
                 )
             )
 
@@ -95,14 +135,16 @@ class RecapGenerator:
         template = load_prompt_template(self.prompt_path)
 
         # Build page-tagged excerpts for LLM context
+        # Use a generous budget so the LLM sees enough text per page to narrate accurately
         page_snippets: list[str] = []
-        char_budget = 4500
+        char_budget = 12000  # ~3x the old limit; keeps sync accurate across more pages
         current_chars = 0
 
         for page in document.pages:
             clean_page_text = page.text.strip()
             if clean_page_text:
-                snippet = f"--- Page {page.page_number} ---\n{clean_page_text[:500]}"
+                # Give each page up to 800 chars so the LLM has enough context
+                snippet = f"--- Page {page.page_number} ---\n{clean_page_text[:800]}"
                 if current_chars + len(snippet) > char_budget:
                     break
                 page_snippets.append(snippet)
