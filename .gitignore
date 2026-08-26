@@ -32,3 +32,9 @@ venv/
 # vidts generated output
 output/*
 !output/.gitkeep
+
+# Node / React
+node_modules/
+*.log
+.env.local
+.env.*.local
