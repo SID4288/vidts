@@ -20,7 +20,7 @@ SUPPORTED_VOICES = [
     "en-US-GuyNeural",
     "en-GB-SoniaNeural",
 ]
-SUPPORTED_MODELS = ["llama3.2", "mistral", "deepseek-r1", "qwen2.5", "phi3"]
+SUPPORTED_MODELS = ["llama3.2:1b", "llama3.2", "mistral", "deepseek-r1", "qwen2.5", "phi3"]
 PIPELINE_STAGES = [
     ("Ingest", "Extracting pages and rendering images"),
     ("Analysis", "Analyzing document structure and content density"),
@@ -161,9 +161,17 @@ def render_sidebar(defaults: AppConfig) -> dict[str, Any]:
                 help="For Docker Compose, use http://ollama:11434.",
             )
             model_options = list(SUPPORTED_MODELS)
-            if defaults.llm.model not in model_options:
-                model_options.insert(0, defaults.llm.model)
-            model = st.selectbox("Model", model_options, index=_option_index(model_options, defaults.llm.model))
+            preferred_model = "llama3.2:1b" if defaults.llm.model == "llama3.2" else defaults.llm.model
+            if preferred_model not in model_options:
+                model_options.insert(0, preferred_model)
+            if "vidts_model" not in st.session_state:
+                st.session_state["vidts_model"] = preferred_model
+            model = st.selectbox(
+                "Model",
+                model_options,
+                index=_option_index(model_options, preferred_model),
+                key="vidts_model",
+            )
             timeout_seconds = st.number_input(
                 "Timeout (seconds)", min_value=30, max_value=1800, value=defaults.llm.timeout_seconds, step=30
             )
