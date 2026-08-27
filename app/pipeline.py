@@ -1,8 +1,8 @@
-"""High-level orchestration pipeline for vidts."""
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,7 +22,7 @@ from app.segmentation.models import DocumentSegment
 from app.segmentation.segmenter import Segmenter
 from app.video.ffmpeg_renderer import FFmpegVideoRenderer
 from app.video.models import RenderedVideo
-from app.video.renderer import PlaceholderVideoRenderer, VideoRenderer
+from app.video.renderer import VideoRenderer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class Pipeline:
         self.renderer = renderer
 
     @classmethod
-    def from_config(cls, config: AppConfig) -> "Pipeline":
+    def from_config(cls, config: AppConfig) -> Pipeline:
         llm_provider = OllamaProvider(
             model=config.llm.model,
             base_url=config.llm.base_url,
@@ -102,23 +102,40 @@ class Pipeline:
             renderer=renderer,
         )
 
-    def run(self, pdf_path: str | Path) -> PipelineResult:
+    def run(
+        self,
+        pdf_path: str | Path,
+        progress_callback: Callable[[int, str, str], None] | None = None,
+    ) -> PipelineResult:
+        """Run the six-stage pipeline and optionally report each stage before it starts."""
         path = Path(pdf_path)
+        if progress_callback:
+            progress_callback(1, "Ingest", "Extracting pages and rendering images")
         LOGGER.info("Stage 1/6 ingest: parsing and extracting pages from %s", path)
         document = self.parser.parse(path)
 
+        if progress_callback:
+            progress_callback(2, "Analysis", "Analyzing document structure and content density")
         LOGGER.info("Stage 2/6 analysis: analyzing document structure and content density")
         analysis = self.analyzer.analyze(document)
 
+        if progress_callback:
+            progress_callback(3, "Recap", "Generating narration script via LLM")
         LOGGER.info("Stage 3/6 recap: generating narration script via LLM")
         recap = self.recap_generator.generate(document=document, analysis=analysis)
 
+        if progress_callback:
+            progress_callback(4, "Segmentation", "Calculating pacing and scene segment mapping")
         LOGGER.info("Stage 4/6 segmentation: calculating pacing and video segments")
         segments = self.segmenter.segment(recap=recap, total_pages=len(document.pages))
 
+        if progress_callback:
+            progress_callback(5, "Narration", "Synthesizing voiceover audio clips")
         LOGGER.info("Stage 5/6 narration: synthesizing narration audio")
         narration = self.narrator.narrate(segments)
 
+        if progress_callback:
+            progress_callback(6, "Video", "Assembling scenes and rendering MP4 video")
         LOGGER.info("Stage 6/6 video: assembling and rendering final MP4 video")
         video = self.renderer.render(segments=segments, narration=narration)
 

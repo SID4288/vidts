@@ -1,10 +1,9 @@
-"""Generates document recaps with scene-by-scene visual-voice synchronization."""
 
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 import re
+from pathlib import Path
 
 from app.analysis.models import DocumentAnalysis
 from app.ingest.models import Document
@@ -38,12 +37,12 @@ def _clean_narration_text(text: str) -> str:
 
 def parse_scenes_from_script(raw_script: str, total_pages: int = 1) -> list[RecapScene]:
     """Extracts structured [Page N] scenes from generated narration text.
-    
+
     Ensures that each scene maps to a valid page and that no page
     has duplicate scenes (keeps the longest narration if duplicates exist).
     """
     scenes: list[RecapScene] = []
-    
+
     # Pattern 1: Matches [Page 1]: Narration... or [Page 1] Narration...
     pattern = re.compile(
         r"\[(?:Page|Slide)\s*(\d+)\]\s*:?\s*(.*?)(?=\[(?:Page|Slide)\s*\d+\]|\Z)",
@@ -70,17 +69,17 @@ def parse_scenes_from_script(raw_script: str, total_pages: int = 1) -> list[Reca
                 p_num = int(p_str)
             except ValueError:
                 continue
-            
+
             # Clamp page number to valid range
             if total_pages > 0:
                 p_num = max(1, min(p_num, total_pages))
             else:
                 p_num = max(1, p_num)
-            
+
             # Keep the longer narration if we already have one for this page
             if p_num not in page_narrations or len(clean_text) > len(page_narrations[p_num]):
                 page_narrations[p_num] = clean_text
-        
+
         # Build scenes sorted by page number for correct visual ordering
         for idx, p_num in enumerate(sorted(page_narrations.keys()), start=1):
             narration = page_narrations[p_num]
@@ -116,6 +115,58 @@ def parse_scenes_from_script(raw_script: str, total_pages: int = 1) -> list[Reca
 
     return scenes
 
+def ensure_page_coverage(
+    scenes: list[RecapScene],
+    document: Document,
+    key_topics: list[str],
+    words_per_minute: int,
+) -> list[RecapScene]:
+    """Return one ordered narration scene for every extracted document page.
+
+    Local models can omit tags even when the prompt requests every page. Existing
+    narration is retained, while a short neutral bridge is added for any missing
+    page so the visual sequence never skips an extracted page.
+    """
+    if not document.pages:
+        return scenes
+
+    scenes_by_page = {scene.page_number: scene for scene in scenes}
+    topic_phrase = ", ".join(key_topics[:3]) or "the document's main ideas"
+    complete_scenes: list[RecapScene] = []
+
+    for scene_index, page in enumerate(document.pages, start=1):
+        existing = scenes_by_page.get(page.page_number)
+        if existing:
+            complete_scenes.append(
+                RecapScene(
+                    scene_index=scene_index,
+                    page_number=page.page_number,
+                    title=f"Scene {scene_index} (Page {page.page_number})",
+                    narration_text=existing.narration_text,
+                    estimated_duration_seconds=existing.estimated_duration_seconds,
+                )
+            )
+            continue
+
+        fallback_text = (
+            f"This section extends the document's discussion of {topic_phrase}. "
+            "It contributes context to the larger story being developed."
+        )
+        complete_scenes.append(
+            RecapScene(
+                scene_index=scene_index,
+                page_number=page.page_number,
+                title=f"Scene {scene_index} (Page {page.page_number})",
+                narration_text=fallback_text,
+                estimated_duration_seconds=(
+                    len(fallback_text.split()) / max(words_per_minute, 1)
+                )
+                * 60,
+            )
+        )
+
+    return complete_scenes
+
 
 class RecapGenerator:
     """Orchestrates recap generation using LLMProvider with scene-by-scene synchronization."""
@@ -150,7 +201,11 @@ class RecapGenerator:
                 page_snippets.append(snippet)
                 current_chars += len(snippet)
 
-        combined_text = "\n\n".join(page_snippets) if page_snippets else "No selectable text extracted."
+        combined_text = (
+            "\n\n".join(page_snippets)
+            if page_snippets
+            else "No selectable text extracted."
+        )
 
         prompt = template.format(
             title=document.title,
@@ -160,7 +215,8 @@ class RecapGenerator:
         )
 
         LOGGER.info(
-            "Generating scene-synchronized recap with %s (prompt length: %d chars; may take 30-90s on CPU)...",
+            "Generating scene-synchronized recap with %s "
+            "(prompt length: %d chars; may take 30-90s on CPU)...",
             getattr(self.llm_provider, "model", "LLM"),
             len(prompt),
         )
@@ -171,7 +227,12 @@ class RecapGenerator:
                 f"It covers key themes including {', '.join(analysis.key_topics)}."
             )
 
-        scenes = parse_scenes_from_script(raw_output, total_pages=len(document.pages))
+        scenes = ensure_page_coverage(
+            parse_scenes_from_script(raw_output, total_pages=len(document.pages)),
+            document=document,
+            key_topics=analysis.key_topics,
+            words_per_minute=self.words_per_minute,
+        )
         total_words = sum(len(s.narration_text.split()) for s in scenes)
         estimated_duration = (total_words / max(self.words_per_minute, 1)) * 60.0
 
