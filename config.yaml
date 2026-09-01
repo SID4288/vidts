@@ -1,10 +1,10 @@
 # vidts configuration file
 
 llm:
-  provider: ollama
-  model: llama3.2
-  base_url: "http://localhost:11434"
-  timeout_seconds: 300
+  provider: groq
+  model: "groq/compound-mini"
+  base_url: "https://api.groq.com/openai/v1"
+  timeout_seconds: 60
 
 document:
   max_pages: null  # null to parse all pages, or an integer limit (e.g. 50)

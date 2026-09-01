@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from app.llm.base import LLMProvider
+from app.llm.groq import GroqProvider
 from app.llm.models import LLMRequest, LLMResponse
-from app.llm.ollama import OllamaProvider
 
 __all__ = [
     "LLMProvider",
-    "OllamaProvider",
+    "GroqProvider",
     "LLMRequest",
     "LLMResponse",
 ]

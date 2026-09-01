@@ -3,18 +3,42 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 
+def load_env_file(env_path: str | Path = ".env") -> None:
+    """Loads key-value pairs from a .env file into os.environ if not already set."""
+    path = Path(env_path)
+    if not path.exists():
+        return
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            key = key.strip()
+            val = val.strip().strip("'\"")
+            if key and key not in os.environ:
+                os.environ[key] = val
+    except Exception:
+        pass
+
+
+load_env_file()
+
+
 @dataclass(slots=True)
 class LLMSettings:
-    provider: str = "ollama"
-    model: str = "llama3.2"
-    base_url: str = "http://localhost:11434"
-    timeout_seconds: int = 300
+    provider: str = "groq"
+    model: str = "groq/compound-mini"
+    api_key: str | None = None
+    base_url: str = "https://api.groq.com/openai/v1"
+    timeout_seconds: int = 60
 
 
 @dataclass(slots=True)

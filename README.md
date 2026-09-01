@@ -1,4 +1,4 @@
-﻿# vidts
+# vidts
 
 Convert any PDF document into a narrated video with synced visuals and voiceover.
 
@@ -45,7 +45,8 @@ output/
 ## Requirements
 
 - Python 3.11 or higher
-- [Ollama](https://ollama.com) installed and running
+- FFmpeg installed and in PATH
+- Free Groq API Key (from [console.groq.com](https://console.groq.com))
 
 ---
 
@@ -73,18 +74,25 @@ output/
    pip install -r requirements.txt
    ```
 
-4. Start Ollama and download a model:
+4. Set your Groq API Key:
    ```bash
-   ollama serve
-   ollama pull llama3.2
+   # Windows (PowerShell)
+   $env:GROQ_API_KEY="your_api_key_here"
+
+   # Linux / macOS
+   export GROQ_API_KEY="your_api_key_here"
    ```
 
 ---
 
 ## Usage
 
-Run the tool on a PDF file:
+### Web UI (Streamlit)
+```bash
+streamlit run streamlit_app.py
+```
 
+### CLI
 ```bash
 python -m app.main path/to/document.pdf
 ```
@@ -95,14 +103,14 @@ The output video will be saved to `output/part_1.mp4`.
 
 ## Configuration
 
-Settings can be changed in `config.yaml`:
+Settings can be configured in `config.yaml`:
 
 ```yaml
 llm:
-  provider: ollama
-  model: llama3.2
-  base_url: "http://localhost:11434"
-  timeout_seconds: 300
+  provider: groq
+  model: "llama-3.3-70b-versatile"
+  base_url: "https://api.groq.com/openai/v1"
+  timeout_seconds: 60
 
 narration:
   engine: "edge-tts"

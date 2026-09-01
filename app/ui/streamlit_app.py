@@ -9,10 +9,11 @@ from uuid import uuid4
 import streamlit as st
 
 from app import LLMError, PDFParseError, SegmentationError, VideoRenderError, VidtsError
-from app.config import AppConfig, load_config
+from app.config import AppConfig, load_config, load_env_file
 from app.pipeline import Pipeline, PipelineResult
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_env_file(PROJECT_ROOT / ".env")
 CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 SUPPORTED_VOICES = [
     "en-US-BrianNeural",
@@ -20,7 +21,10 @@ SUPPORTED_VOICES = [
     "en-US-GuyNeural",
     "en-GB-SoniaNeural",
 ]
-SUPPORTED_MODELS = ["llama3.2:1b", "llama3.2", "mistral", "deepseek-r1", "qwen2.5", "phi3"]
+SUPPORTED_MODELS = [
+    "groq/compound-mini",
+    "groq/compound",
+]
 PIPELINE_STAGES = [
     ("Ingest", "Extracting pages and rendering images"),
     ("Analysis", "Analyzing document structure and content density"),
@@ -155,15 +159,8 @@ def render_sidebar(defaults: AppConfig) -> dict[str, Any]:
 
         st.markdown("<p class='sidebar-section'>GENERATION CONTROLS</p>", unsafe_allow_html=True)
         with st.expander("Language model", expanded=True):
-            base_url = st.text_input(
-                "Ollama Base URL",
-                value=defaults.llm.base_url,
-                help="For Docker Compose, use http://ollama:11434.",
-            )
             model_options = list(SUPPORTED_MODELS)
-            preferred_model = "llama3.2:1b" if defaults.llm.model == "llama3.2" else defaults.llm.model
-            if preferred_model not in model_options:
-                model_options.insert(0, preferred_model)
+            preferred_model = defaults.llm.model if defaults.llm.model in model_options else model_options[0]
             if "vidts_model" not in st.session_state:
                 st.session_state["vidts_model"] = preferred_model
             model = st.selectbox(
@@ -171,9 +168,6 @@ def render_sidebar(defaults: AppConfig) -> dict[str, Any]:
                 model_options,
                 index=_option_index(model_options, preferred_model),
                 key="vidts_model",
-            )
-            timeout_seconds = st.number_input(
-                "Timeout (seconds)", min_value=30, max_value=1800, value=defaults.llm.timeout_seconds, step=30
             )
 
         with st.expander("Narration voice", expanded=True):
@@ -204,9 +198,7 @@ def render_sidebar(defaults: AppConfig) -> dict[str, Any]:
         )
 
     return {
-        "base_url": base_url.strip().rstrip("/"),
         "model": model,
-        "timeout_seconds": int(timeout_seconds),
         "voice": voice,
         "rate": f"{rate:+d}%",
         "resolution": resolution,
@@ -221,9 +213,7 @@ def build_runtime_config(defaults: AppConfig, settings: dict[str, Any], run_dire
         defaults,
         llm=replace(
             defaults.llm,
-            base_url=settings["base_url"],
             model=settings["model"],
-            timeout_seconds=settings["timeout_seconds"],
         ),
         narration=replace(defaults.narration, engine="edge-tts", voice=settings["voice"], rate=settings["rate"]),
         video=replace(defaults.video, resolution=settings["resolution"], fps=settings["fps"]),
@@ -336,10 +326,7 @@ def explain_error(error: Exception, settings: dict[str, Any]) -> str:
     if isinstance(error, PDFParseError):
         return "We could not read that file as a valid PDF. Try exporting it again and upload the new PDF."
     if isinstance(error, LLMError):
-        return (
-            f"vidts could not reach Ollama at `{settings['base_url']}`. Start Ollama, confirm the URL, "
-            f"and make sure the `{settings['model']}` model is installed."
-        )
+        return f"Language model error: {error}"
     if isinstance(error, VideoRenderError):
         return "The document and narration were created, but the MP4 render failed. Confirm that FFmpeg is installed and available on PATH."
     if isinstance(error, SegmentationError):
@@ -381,9 +368,6 @@ def main() -> None:
     st.set_page_config(page_title="vidts — PDF to narrated video", page_icon="▶", layout="wide")
     inject_styles(st.session_state.get("vidts_theme", "Light desk"))
     defaults = load_config(CONFIG_PATH)
-    ollama_url = os.getenv("OLLAMA_BASE_URL")
-    if ollama_url:
-        defaults = replace(defaults, llm=replace(defaults.llm, base_url=ollama_url.rstrip("/")))
     settings = render_sidebar(defaults)
 
     st.markdown(

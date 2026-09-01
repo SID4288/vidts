@@ -188,14 +188,13 @@ class RecapGenerator:
         # Build page-tagged excerpts for LLM context
         # Use a generous budget so the LLM sees enough text per page to narrate accurately
         page_snippets: list[str] = []
-        char_budget = 12000  # ~3x the old limit; keeps sync accurate across more pages
+        char_budget = 6000  # Stays comfortably within Groq request limits while preserving full context
         current_chars = 0
 
         for page in document.pages:
             clean_page_text = page.text.strip()
             if clean_page_text:
-                # Give each page up to 800 chars so the LLM has enough context
-                snippet = f"--- Page {page.page_number} ---\n{clean_page_text[:800]}"
+                snippet = f"--- Page {page.page_number} ---\n{clean_page_text[:500]}"
                 if current_chars + len(snippet) > char_budget:
                     break
                 page_snippets.append(snippet)

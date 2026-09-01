@@ -12,7 +12,7 @@ from app.config import AppConfig
 from app.ingest.models import Document
 from app.ingest.page_extractor import PageExtractor
 from app.ingest.pdf_parser import PDFParser
-from app.llm.ollama import OllamaProvider
+from app.llm.groq import GroqProvider
 from app.narration.edge_tts_narrator import EdgeTTSNarrator
 from app.narration.models import NarrationResult
 from app.narration.narrator import Narrator, PlaceholderNarrator
@@ -61,8 +61,9 @@ class Pipeline:
 
     @classmethod
     def from_config(cls, config: AppConfig) -> Pipeline:
-        llm_provider = OllamaProvider(
+        llm_provider = GroqProvider(
             model=config.llm.model,
+            api_key=config.llm.api_key,
             base_url=config.llm.base_url,
             timeout_seconds=config.llm.timeout_seconds,
         )
