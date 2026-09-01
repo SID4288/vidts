@@ -2,13 +2,12 @@
 
 Convert any PDF document into a narrated video with synced visuals and voiceover.
 
-Runs locally and works offline without paid API keys.
-
 ---
 
-## Demo
+## Live Demo & Preview
 
-- **Video Demo**: [Watch the generated sample video on Google Drive](https://drive.google.com/file/d/1RiZo_zkr23p7DiGZst_3H4aNC2SmowT_/view?usp=sharing)
+- **Live Web App**: [sid4288-vidts.streamlit.app](https://sid4288-vidts.streamlit.app/) — Try it directly in your browser!
+- **Sample Video Output**: [Watch the generated sample video on Google Drive](https://drive.google.com/file/d/1RiZo_zkr23p7DiGZst_3H4aNC2SmowT_/view?usp=sharing)
 
 ### Example Input and Output
 
@@ -35,8 +34,8 @@ output/
 ## How It Works
 
 1. **Extract pages**: PyMuPDF renders each PDF page to an image and extracts its text.
-2. **Analyze content**: A local LLM determines the document type and key topics.
-3. **Generate script**: The LLM writes page-by-page educational narration.
+2. **Analyze content**: Heuristic & LLM analysis determines document structure and key topics.
+3. **Generate script**: Groq Cloud LLM (`groq/compound-mini`) writes page-by-page educational narration in seconds.
 4. **Generate speech**: Edge TTS creates audio clips for each page.
 5. **Render video**: FFmpeg combines each page image with its matching audio duration into an MP4 file.
 
@@ -108,7 +107,7 @@ Settings can be configured in `config.yaml`:
 ```yaml
 llm:
   provider: groq
-  model: "llama-3.3-70b-versatile"
+  model: "groq/compound-mini"
   base_url: "https://api.groq.com/openai/v1"
   timeout_seconds: 60
 
