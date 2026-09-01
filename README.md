@@ -53,7 +53,7 @@ output/
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/vidts.git
+   git clone https://github.com/SID4288/vidts.git
    cd vidts
    ```
 
