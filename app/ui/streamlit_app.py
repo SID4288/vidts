@@ -23,7 +23,6 @@ SUPPORTED_VOICES = [
 ]
 SUPPORTED_MODELS = [
     "groq/compound-mini",
-    "groq/compound",
 ]
 PIPELINE_STAGES = [
     ("Ingest", "Extracting pages and rendering images"),
