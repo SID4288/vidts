@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import logging
-from pathlib import Path
 import uuid
+from abc import ABC, abstractmethod
+from pathlib import Path
 
 from app.narration.models import AudioTrack, NarrationResult
 from app.segmentation.models import DocumentSegment

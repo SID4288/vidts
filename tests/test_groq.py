@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import io
 import json
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 from app import LLMError
@@ -20,13 +20,7 @@ def test_groq_missing_api_key_raises_error() -> None:
 def test_groq_generate_success() -> None:
     provider = GroqProvider(api_key="gsk_test123")
     mock_response_data = {
-        "choices": [
-            {
-                "message": {
-                    "content": "This is a test generation from Groq."
-                }
-            }
-        ]
+        "choices": [{"message": {"content": "This is a test generation from Groq."}}]
     }
 
     mock_resp = MagicMock()
@@ -50,13 +44,7 @@ def test_groq_generate_structured_success() -> None:
 
     provider = GroqProvider(api_key="gsk_test123")
     mock_response_data = {
-        "choices": [
-            {
-                "message": {
-                    "content": json.dumps({"title": "Sample Title", "count": 42})
-                }
-            }
-        ]
+        "choices": [{"message": {"content": json.dumps({"title": "Sample Title", "count": 42})}}]
     }
 
     mock_resp = MagicMock()

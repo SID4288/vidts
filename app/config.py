@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -83,7 +83,7 @@ class AppConfig:
     video: VideoSettings = field(default_factory=VideoSettings)
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "AppConfig":
+    def from_dict(cls, raw: dict[str, Any]) -> AppConfig:
         llm = LLMSettings(**raw.get("llm", {}))
         document = DocumentSettings(**raw.get("document", {}))
         segmentation = SegmentationSettings(**raw.get("segmentation", {}))

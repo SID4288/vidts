@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -159,7 +158,9 @@ def render_sidebar(defaults: AppConfig) -> dict[str, Any]:
         st.markdown("<p class='sidebar-section'>GENERATION CONTROLS</p>", unsafe_allow_html=True)
         with st.expander("Language model", expanded=True):
             model_options = list(SUPPORTED_MODELS)
-            preferred_model = defaults.llm.model if defaults.llm.model in model_options else model_options[0]
+            preferred_model = (
+                defaults.llm.model if defaults.llm.model in model_options else model_options[0]
+            )
             if "vidts_model" not in st.session_state:
                 st.session_state["vidts_model"] = preferred_model
             model = st.selectbox(
@@ -173,9 +174,20 @@ def render_sidebar(defaults: AppConfig) -> dict[str, Any]:
             voice_options = list(SUPPORTED_VOICES)
             if defaults.narration.voice not in voice_options:
                 voice_options.insert(0, defaults.narration.voice)
-            voice = st.selectbox("Edge-TTS voice", voice_options, index=_option_index(voice_options, defaults.narration.voice))
+            voice = st.selectbox(
+                "Edge-TTS voice",
+                voice_options,
+                index=_option_index(voice_options, defaults.narration.voice),
+            )
             initial_rate = int(defaults.narration.rate.replace("%", "").replace("+", "") or "0")
-            rate = st.slider("Speech rate", min_value=-50, max_value=50, value=initial_rate, step=5, format="%d%%")
+            rate = st.slider(
+                "Speech rate",
+                min_value=-50,
+                max_value=50,
+                value=initial_rate,
+                step=5,
+                format="%d%%",
+            )
 
         with st.expander("Video output", expanded=True):
             resolution_options = ["1920x1080", "1280x720", "1080x1080"]
@@ -184,11 +196,17 @@ def render_sidebar(defaults: AppConfig) -> dict[str, Any]:
                 resolution_options,
                 index=_option_index(resolution_options, defaults.video.resolution),
             )
-            fps = st.select_slider("FPS", options=[24, 30, 60], value=defaults.video.fps if defaults.video.fps in [24, 30, 60] else 30)
+            fps = st.select_slider(
+                "FPS",
+                options=[24, 30, 60],
+                value=defaults.video.fps if defaults.video.fps in [24, 30, 60] else 30,
+            )
 
         with st.expander("Processing limits", expanded=True):
             default_pages = defaults.document.max_pages or 10
-            max_pages = st.slider("Maximum PDF pages", min_value=1, max_value=20, value=min(max(default_pages, 1), 20))
+            max_pages = st.slider(
+                "Maximum PDF pages", min_value=1, max_value=20, value=min(max(default_pages, 1), 20)
+            )
 
         st.markdown(
             "<p class='sidebar-footnote'><span class='sidebar-eyebrow'>Guest session</span><br>"
@@ -206,7 +224,9 @@ def render_sidebar(defaults: AppConfig) -> dict[str, Any]:
     }
 
 
-def build_runtime_config(defaults: AppConfig, settings: dict[str, Any], run_directory: Path) -> AppConfig:
+def build_runtime_config(
+    defaults: AppConfig, settings: dict[str, Any], run_directory: Path
+) -> AppConfig:
     """Create a per-run config entirely in memory; config.yaml is never rewritten."""
     return replace(
         defaults,
@@ -214,7 +234,9 @@ def build_runtime_config(defaults: AppConfig, settings: dict[str, Any], run_dire
             defaults.llm,
             model=settings["model"],
         ),
-        narration=replace(defaults.narration, engine="edge-tts", voice=settings["voice"], rate=settings["rate"]),
+        narration=replace(
+            defaults.narration, engine="edge-tts", voice=settings["voice"], rate=settings["rate"]
+        ),
         video=replace(defaults.video, resolution=settings["resolution"], fps=settings["fps"]),
         document=replace(defaults.document, max_pages=settings["max_pages"]),
         output=replace(defaults.output, directory=str(run_directory)),
@@ -279,7 +301,9 @@ def render_results(result: PipelineResult) -> None:
                 type="primary",
             )
         else:
-            st.warning("The pipeline completed, but no playable MP4 was found. Check the Video stage output and FFmpeg logs.")
+            st.warning(
+                "The pipeline completed, but no playable MP4 was found. Check the Video stage output and FFmpeg logs."
+            )
 
     with script_tab:
         if result.recap.summary:
@@ -296,19 +320,31 @@ def render_results(result: PipelineResult) -> None:
             st.code(result.recap.raw_script or "The LLM did not return a scene-by-scene recap.")
 
     with pages_tab:
-        pages_with_images = [page for page in result.document.pages if existing_file(page.image_path)]
+        pages_with_images = [
+            page for page in result.document.pages if existing_file(page.image_path)
+        ]
         if not pages_with_images:
-            st.warning("No page previews were rendered. The recap can still complete when PDF text extraction succeeds.")
+            st.warning(
+                "No page previews were rendered. The recap can still complete when PDF text extraction succeeds."
+            )
         else:
             for start in range(0, len(pages_with_images), 2):
                 columns = st.columns(2)
-                for column, page in zip(columns, pages_with_images[start : start + 2], strict=False):
+                for column, page in zip(
+                    columns, pages_with_images[start : start + 2], strict=False
+                ):
                     with column:
-                        st.image(str(page.image_path), caption=f"Page {page.page_number}", use_container_width=True)
+                        st.image(
+                            str(page.image_path),
+                            caption=f"Page {page.page_number}",
+                            use_container_width=True,
+                        )
 
     with audio_tab:
         if not result.narration.tracks:
-            st.warning("No audio tracks were returned. This can happen when Edge-TTS is unavailable.")
+            st.warning(
+                "No audio tracks were returned. This can happen when Edge-TTS is unavailable."
+            )
         for track in result.narration.tracks:
             st.markdown(f"#### Part {track.segment_part_number} narration")
             master_audio = existing_file(track.audio_path)
@@ -317,7 +353,9 @@ def render_results(result: PipelineResult) -> None:
             for scene_audio in track.scenes:
                 clip = existing_file(scene_audio.audio_path)
                 if clip:
-                    st.caption(f"Scene {scene_audio.scene_index} · Page {scene_audio.page_number} · {scene_audio.duration_seconds:.1f}s")
+                    st.caption(
+                        f"Scene {scene_audio.scene_index} · Page {scene_audio.page_number} · {scene_audio.duration_seconds:.1f}s"
+                    )
                     st.audio(clip.read_bytes(), format="audio/mp3")
 
 
@@ -336,7 +374,9 @@ def explain_error(error: Exception, settings: dict[str, Any]) -> str:
     return f"The generation stopped unexpectedly: {error}"
 
 
-def generate_video(uploaded_file: Any, defaults: AppConfig, settings: dict[str, Any]) -> PipelineResult | None:
+def generate_video(
+    uploaded_file: Any, defaults: AppConfig, settings: dict[str, Any]
+) -> PipelineResult | None:
     run_directory = PROJECT_ROOT / "output" / "streamlit" / uuid4().hex
     runtime_config = build_runtime_config(defaults, settings, run_directory)
     try:
@@ -392,10 +432,19 @@ def main() -> None:
         "<h3>Set your PDF on the desk.</h3></div><p>PDF only · page limit set in studio controls</p></div>",
         unsafe_allow_html=True,
     )
-    uploaded_file = st.file_uploader("Set your PDF on the desk", type=["pdf"], help="PDF only. The processing limit is set in the sidebar.")
-    st.markdown("<p class='upload-note'>The uploaded file is stored only in its generation output folder, alongside the preview images, audio clips, and MP4.</p>", unsafe_allow_html=True)
+    uploaded_file = st.file_uploader(
+        "Set your PDF on the desk",
+        type=["pdf"],
+        help="PDF only. The processing limit is set in the sidebar.",
+    )
+    st.markdown(
+        "<p class='upload-note'>The uploaded file is stored only in its generation output folder, alongside the preview images, audio clips, and MP4.</p>",
+        unsafe_allow_html=True,
+    )
 
-    generate_clicked = st.button("Generate video", type="primary", disabled=uploaded_file is None, use_container_width=False)
+    generate_clicked = st.button(
+        "Generate video", type="primary", disabled=uploaded_file is None, use_container_width=False
+    )
     if generate_clicked and uploaded_file:
         result = generate_video(uploaded_file, defaults, settings)
         if result:

@@ -25,8 +25,12 @@ def test_analyzer_empty_document() -> None:
 def test_analyzer_text_dense_document() -> None:
     analyzer = DocumentAnalyzer()
     pages = [
-        DocumentPage(page_number=1, text="Chapter 1: Deep diving into quantum physics with formulas... " * 10),
-        DocumentPage(page_number=2, text="Continuing Chapter 1 analysis of wave particle duality... " * 10),
+        DocumentPage(
+            page_number=1, text="Chapter 1: Deep diving into quantum physics with formulas... " * 10
+        ),
+        DocumentPage(
+            page_number=2, text="Continuing Chapter 1 analysis of wave particle duality... " * 10
+        ),
     ]
     doc = Document(
         id="text-doc",

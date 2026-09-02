@@ -15,7 +15,9 @@ from app.ingest.page_extractor import PageExtractor
 class PDFParser:
     """Parses PDF files into document domain models."""
 
-    def __init__(self, max_pages: int | None = None, page_extractor: PageExtractor | None = None) -> None:
+    def __init__(
+        self, max_pages: int | None = None, page_extractor: PageExtractor | None = None
+    ) -> None:
         self.max_pages = max_pages
         self.page_extractor = page_extractor or PageExtractor()
 

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import logging
@@ -115,6 +114,7 @@ def parse_scenes_from_script(raw_script: str, total_pages: int = 1) -> list[Reca
 
     return scenes
 
+
 def ensure_page_coverage(
     scenes: list[RecapScene],
     document: Document,
@@ -158,9 +158,7 @@ def ensure_page_coverage(
                 page_number=page.page_number,
                 title=f"Scene {scene_index} (Page {page.page_number})",
                 narration_text=fallback_text,
-                estimated_duration_seconds=(
-                    len(fallback_text.split()) / max(words_per_minute, 1)
-                )
+                estimated_duration_seconds=(len(fallback_text.split()) / max(words_per_minute, 1))
                 * 60,
             )
         )
@@ -188,7 +186,9 @@ class RecapGenerator:
         # Build page-tagged excerpts for LLM context
         # Use a generous budget so the LLM sees enough text per page to narrate accurately
         page_snippets: list[str] = []
-        char_budget = 6000  # Stays comfortably within Groq request limits while preserving full context
+        char_budget = (
+            6000  # Stays comfortably within Groq request limits while preserving full context
+        )
         current_chars = 0
 
         for page in document.pages:
@@ -201,9 +201,7 @@ class RecapGenerator:
                 current_chars += len(snippet)
 
         combined_text = (
-            "\n\n".join(page_snippets)
-            if page_snippets
-            else "No selectable text extracted."
+            "\n\n".join(page_snippets) if page_snippets else "No selectable text extracted."
         )
 
         prompt = template.format(

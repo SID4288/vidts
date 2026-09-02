@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Any, TypeVar
 import urllib.error
 import urllib.request
+from typing import Any, TypeVar
 
 from app import LLMError
 from app.llm.base import LLMProvider
@@ -69,7 +69,7 @@ class GroqProvider(LLMProvider):
             LOGGER.warning("Groq returned empty choices for prompt")
             return ""
 
-        content = choices[0].get("message", {}).get("content", "")
+        content: str = str(choices[0].get("message", {}).get("content", ""))
         return content
 
     def generate_structured(
@@ -105,15 +105,18 @@ class GroqProvider(LLMProvider):
         except json.JSONDecodeError as exc:
             raise LLMError(f"Failed to parse JSON response from Groq: {content}") from exc
 
-        if hasattr(response_model, "from_dict") and callable(getattr(response_model, "from_dict")):
-            return response_model.from_dict(parsed)  # type: ignore[no-any-return]
-        if hasattr(response_model, "model_validate") and callable(getattr(response_model, "model_validate")):
-            return response_model.model_validate(parsed)  # type: ignore[no-any-return]
+        model_any: Any = response_model
+        if hasattr(model_any, "from_dict") and callable(model_any.from_dict):
+            return model_any.from_dict(parsed)  # type: ignore[no-any-return]
+        if hasattr(model_any, "model_validate") and callable(model_any.model_validate):
+            return model_any.model_validate(parsed)  # type: ignore[no-any-return]
         if isinstance(parsed, dict):
             try:
                 return response_model(**parsed)
             except Exception as exc:
-                raise LLMError(f"Could not instantiate {response_model.__name__} from data: {parsed}") from exc
+                raise LLMError(
+                    f"Could not instantiate {response_model.__name__} from data: {parsed}"
+                ) from exc
         raise LLMError(f"Unsupported structured model conversion for {response_model.__name__}")
 
     def _post_json(self, url: str, payload: dict[str, Any]) -> dict[str, Any]:

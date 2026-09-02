@@ -7,8 +7,8 @@ from app.ingest.models import Document, DocumentSection, DocumentType
 
 LOGGER = logging.getLogger(__name__)
 
-class DocumentAnalyzer:
 
+class DocumentAnalyzer:
     def analyze(self, document: Document) -> DocumentAnalysis:
         """Performs initial heuristic analysis (placeholder for future deep/LLM analysis)."""
         total_pages = len(document.pages)

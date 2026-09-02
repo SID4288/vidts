@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 import imageio_ffmpeg
 
-from app.narration.models import AudioTrack, NarrationResult, SceneAudio
+from app.narration.models import NarrationResult, SceneAudio
 from app.segmentation.models import DocumentSegment
 from app.video.models import RenderedVideo, VideoPart
 from app.video.renderer import VideoRenderer
@@ -49,7 +49,11 @@ class FFmpegVideoRenderer(VideoRenderer):
                 None,
             )
             audio_path = matching_track.audio_path if matching_track else None
-            duration = matching_track.duration_seconds if matching_track else segment.estimated_duration_seconds
+            duration = (
+                matching_track.duration_seconds
+                if matching_track
+                else segment.estimated_duration_seconds
+            )
             total_duration += duration
 
             out_video_path = self.output_directory / f"part_{segment.part_number}.mp4"
@@ -73,7 +77,11 @@ class FFmpegVideoRenderer(VideoRenderer):
                         duration=duration,
                         output_path=out_video_path,
                     )
-                LOGGER.info("Successfully rendered synced video: %s (duration: %.1fs)", out_video_path, duration)
+                LOGGER.info(
+                    "Successfully rendered synced video: %s (duration: %.1fs)",
+                    out_video_path,
+                    duration,
+                )
             except Exception as exc:
                 LOGGER.error("FFmpeg render failed for Part %d: %s", segment.part_number, exc)
 
@@ -84,11 +92,18 @@ class FFmpegVideoRenderer(VideoRenderer):
                     duration_seconds=duration,
                     resolution=self.resolution,
                     fps=self.fps,
-                    metadata={"status": "rendered", "scenes_synced": len(matching_track.scenes) if matching_track else 0},
+                    metadata={
+                        "status": "rendered",
+                        "scenes_synced": len(matching_track.scenes) if matching_track else 0,
+                    },
                 )
             )
 
-        final_path = parts[0].video_path if len(parts) == 1 else self.output_directory / "combined_output.mp4"
+        final_path = (
+            parts[0].video_path
+            if len(parts) == 1
+            else self.output_directory / "combined_output.mp4"
+        )
 
         return RenderedVideo(
             video_path=final_path,
@@ -119,11 +134,14 @@ class FFmpegVideoRenderer(VideoRenderer):
         last_valid_img: Path | None = None
 
         for scene in scenes:
-            img_path = self.pages_directory / f"page_{scene.page_number}.png"
-            if not img_path.exists():
-                # Fallback: check any available image
+            primary_img = self.pages_directory / f"page_{scene.page_number}.png"
+            img_path: Path | None = None
+            if primary_img.exists():
+                img_path = primary_img
+            else:
                 available = sorted(self.pages_directory.glob("page_*.png"))
-                img_path = available[0] if available else None
+                if available:
+                    img_path = available[0]
 
             if img_path and img_path.exists():
                 last_valid_img = img_path
@@ -147,22 +165,23 @@ class FFmpegVideoRenderer(VideoRenderer):
             ]
             if audio_path and audio_path.exists():
                 cmd.extend(["-i", str(audio_path), "-c:a", "aac", "-b:a", "192k", "-shortest"])
-            
-            cmd.extend([
-                "-vf",
-                video_filter,
-                "-c:v",
-                "libx264",
-                "-pix_fmt",
-                "yuv420p",
-                "-r",
-                str(self.fps),
-                str(output_path),
-            ])
+
+            cmd.extend(
+                [
+                    "-vf",
+                    video_filter,
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-r",
+                    str(self.fps),
+                    str(output_path),
+                ]
+            )
             subprocess.run(
                 cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
                 encoding="utf-8",
                 errors="ignore",
@@ -257,4 +276,4 @@ class FFmpegVideoRenderer(VideoRenderer):
                 "yuv420p",
                 str(output_path),
             ]
-        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
+        subprocess.run(cmd, capture_output=True, text=True, check=False)

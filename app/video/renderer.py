@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 from app.narration.models import NarrationResult
@@ -55,7 +55,11 @@ class PlaceholderVideoRenderer(VideoRenderer):
                 (t for t in narration.tracks if t.segment_part_number == segment.part_number),
                 None,
             )
-            duration = matching_track.duration_seconds if matching_track else segment.estimated_duration_seconds
+            duration = (
+                matching_track.duration_seconds
+                if matching_track
+                else segment.estimated_duration_seconds
+            )
             total_duration += duration
 
             part_path = self.output_directory / f"part_{segment.part_number}.mp4"

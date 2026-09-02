@@ -126,6 +126,7 @@ def test_ffmpeg_renderer_mock(tmp_path: Path) -> None:
 
 def test_ffmpeg_renderer_scenes_sync(tmp_path: Path) -> None:
     from app.narration.models import SceneAudio
+
     renderer = FFmpegVideoRenderer(output_directory=tmp_path, pages_directory=tmp_path / "pages")
     segments = [
         DocumentSegment(

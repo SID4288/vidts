@@ -8,7 +8,11 @@ from typing import Any, TypeVar
 from app.analysis.models import DocumentAnalysis
 from app.ingest.models import Document, DocumentPage, DocumentType
 from app.llm.base import LLMProvider
-from app.recap.recap_generator import RecapGenerator, parse_scenes_from_script, _clean_narration_text
+from app.recap.recap_generator import (
+    RecapGenerator,
+    _clean_narration_text,
+    parse_scenes_from_script,
+)
 
 T = TypeVar("T")
 
@@ -104,7 +108,10 @@ def test_parse_scenes_sorted_by_page() -> None:
 
 def test_clean_narration_strips_meta_phrases() -> None:
     """Meta-narrator phrases should be stripped from narration text."""
-    assert _clean_narration_text("On this page, bone structure is discussed.") == "Bone structure is discussed."
+    assert (
+        _clean_narration_text("On this page, bone structure is discussed.")
+        == "Bone structure is discussed."
+    )
     assert _clean_narration_text("Here we see the diagram of a cell.") == "The diagram of a cell."
     assert _clean_narration_text("Let's look at the next concept.") == "The next concept."
     assert _clean_narration_text("Moving on to page 3, the data shows...") == "The data shows..."

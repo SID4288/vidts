@@ -13,6 +13,7 @@ LOGGER = logging.getLogger(__name__)
 
 try:
     import fitz  # PyMuPDF
+
     HAS_PYMUPDF = True
 except ImportError:  # pragma: no cover
     HAS_PYMUPDF = False

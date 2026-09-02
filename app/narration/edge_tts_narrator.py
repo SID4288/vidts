@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
 import re
 import subprocess
 import uuid
+from pathlib import Path
 
 import edge_tts
 import imageio_ffmpeg
@@ -84,8 +84,7 @@ def _combine_audio_clips(ffmpeg_exe: str, audio_files: list[Path], output_combin
     ]
     subprocess.run(
         cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
         encoding="utf-8",
         errors="ignore",
@@ -123,39 +122,52 @@ class EdgeTTSNarrator(Narrator):
             segment_duration = 0.0
 
             if segment.scenes:
-                LOGGER.info("Synthesizing %d individual scene audio clips for Part %d", len(segment.scenes), segment.part_number)
+                LOGGER.info(
+                    "Synthesizing %d individual scene audio clips for Part %d",
+                    len(segment.scenes),
+                    segment.part_number,
+                )
                 for scene in segment.scenes:
-                    scene_file = self.output_directory / f"part_{segment.part_number}_scene_{scene.scene_index}.mp3"
+                    scene_path = (
+                        self.output_directory
+                        / f"part_{segment.part_number}_scene_{scene.scene_index}.mp3"
+                    )
                     text_to_speak = scene.narration_text.strip()
                     if not text_to_speak:
                         text_to_speak = f"Page {scene.page_number}."
 
+                    final_scene_file: Path | None = scene_path
                     try:
                         asyncio.run(
                             _synthesize_async(
                                 text=text_to_speak,
-                                output_file=scene_file,
+                                output_file=scene_path,
                                 voice=self.settings.voice,
                                 rate=self.settings.rate,
                                 volume=self.settings.volume,
                             )
                         )
-                        dur = get_audio_duration(scene_file)
+                        dur = get_audio_duration(scene_path)
                         if dur <= 0.0:
                             dur = (len(text_to_speak.split()) / 150.0) * 60.0
                     except Exception as exc:
-                        LOGGER.error("TTS failed for scene %d (page %d): %s", scene.scene_index, scene.page_number, exc)
+                        LOGGER.error(
+                            "TTS failed for scene %d (page %d): %s",
+                            scene.scene_index,
+                            scene.page_number,
+                            exc,
+                        )
                         dur = (len(text_to_speak.split()) / 150.0) * 60.0
-                        scene_file = None
+                        final_scene_file = None
 
-                    if scene_file and scene_file.exists():
-                        synthesized_files.append(scene_file)
+                    if final_scene_file and final_scene_file.exists():
+                        synthesized_files.append(final_scene_file)
 
                     scene_audios.append(
                         SceneAudio(
                             scene_index=scene.scene_index,
                             page_number=scene.page_number,
-                            audio_path=scene_file,
+                            audio_path=final_scene_file,
                             duration_seconds=dur,
                         )
                     )
@@ -179,7 +191,9 @@ class EdgeTTSNarrator(Narrator):
                     )
                     segment_duration = get_audio_duration(master_audio_path)
                 except Exception as exc:
-                    LOGGER.error("TTS failed for monolithic segment %d: %s", segment.part_number, exc)
+                    LOGGER.error(
+                        "TTS failed for monolithic segment %d: %s", segment.part_number, exc
+                    )
                     segment_duration = (len(text_to_speak.split()) / 150.0) * 60.0
 
             total_duration += segment_duration

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 
-class DocumentType(str, Enum):
+class DocumentType(StrEnum):
     UNKNOWN = "unknown"
     COMIC = "comic"
     TEXTBOOK = "textbook"
