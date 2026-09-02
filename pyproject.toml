@@ -28,6 +28,11 @@ dev = [
 [project.scripts]
 vidts = "app.main:run_cli"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["output*", "prompts*", "tests*", "docs*", "examples*"]
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
