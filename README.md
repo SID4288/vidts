@@ -2,6 +2,9 @@
 
 Convert any PDF document into a narrated video with synced visuals and voiceover.
 
+[![CI/CD Pipeline](https://github.com/SID4288/vidts/actions/workflows/ci.yml/badge.svg)](https://github.com/SID4288/vidts/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 ---
 
 ## Live Demo & Preview
@@ -71,6 +74,7 @@ output/
 3. Install dependencies:
    ```bash
    pip install -r requirements.txt
+   pip install -e ".[dev]"
    ```
 
 4. Set your Groq API Key:
@@ -97,6 +101,23 @@ python -m app.main path/to/document.pdf
 ```
 
 The output video will be saved to `output/part_1.mp4`.
+
+---
+
+## Docker & Container Registry
+
+### Using Docker Compose
+```bash
+docker compose up --build
+```
+Access the web UI at `http://localhost:8501`.
+
+### Running from GitHub Container Registry (GHCR)
+The latest container image is automatically built and published via GitHub Actions:
+```bash
+docker pull ghcr.io/sid4288/vidts:latest
+docker run -p 8501:8501 -e GROQ_API_KEY="your_api_key_here" ghcr.io/sid4288/vidts:latest
+```
 
 ---
 
@@ -127,13 +148,26 @@ video:
 
 ---
 
-## Tests
+## Development & CI/CD
 
-Run the test suite:
-
+### Local Testing & Quality Checks
 ```bash
-pytest
+# Run tests with coverage
+pytest --cov=app tests/
+
+# Lint and check formatting
+ruff check .
+ruff format --check .
+
+# Type check
+mypy app/
 ```
+
+### CI/CD Pipeline (GitHub Actions)
+Automated on every push and pull request:
+- **Matrix Testing**: Unit tests run against Python 3.11 and 3.12.
+- **Static Analysis**: Code quality and strict type checks via Ruff and Mypy.
+- **Docker Validation & CD**: Docker images are smoke-tested on PRs and published to GitHub Container Registry (`ghcr.io/sid4288/vidts`) on merges to `main` and release tags.
 
 ---
 
