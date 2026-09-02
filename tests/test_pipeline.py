@@ -67,6 +67,7 @@ def test_pipeline_from_config_factory() -> None:
     config = AppConfig()
     pipeline = Pipeline.from_config(config)
     from app.llm.groq import GroqProvider
+
     assert isinstance(pipeline.recap_generator.llm_provider, GroqProvider)
     assert isinstance(pipeline.narrator, EdgeTTSNarrator)
     assert isinstance(pipeline.renderer, FFmpegVideoRenderer)

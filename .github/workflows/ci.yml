@@ -48,7 +48,7 @@ jobs:
 
       - name: Run Mypy (type check)
         run: |
-          mypy app/
+          mypy --python-version ${{ matrix.python-version }} app/
 
       - name: Run Tests with Coverage
         run: |
